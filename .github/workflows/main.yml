@@ -10,36 +10,33 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
+    
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
     
     - name: Build
       run: |
-        cmd /c call release.bat
-
-    - name: Get current time
-      uses: srfrnk/current-time@v1.1.0
-      id: current-time
-      with:
-        format: YYYY-MM-DD_HH-MM
+        msbuild.exe AntiDebuggerFuxker.sln /m /verbosity:minimal /t:Rebuild /p:Configuration=Release /p:Platform=x64
+        msbuild.exe AntiDebuggerFuxker.sln /m /verbosity:minimal /t:Rebuild /p:Configuration=Release /p:Platform=Win32
+        ./release.bat
     
     - uses: actions/upload-artifact@v2
       with:
-        name: ${{ github.event.repository.name }}_${{ steps.current-time.outputs.formattedTime }}
-        path: Release/
+        name: ${{ github.event.repository.name }}-${{ github.sha }}
+        path: bin/
     
     - name: Compress artifacts
       uses: papeloto/action-zip@v1
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
       with:
-        files: Release/
-        dest: ${{ github.event.repository.name }}_${{ steps.current-time.outputs.formattedTime }}.zip
+        files: bin/
+        dest: ${{ github.event.repository.name }}-${{ github.sha }}.zip
 
     - name: Release
       uses: softprops/action-gh-release@v1
       if: ${{ startsWith(github.ref, 'refs/tags/') }}
       with:
         prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') || contains(github.ref, '-pre') }}
-        files: ${{ github.event.repository.name }}_${{ steps.current-time.outputs.formattedTime }}.zip
+        files: ${{ github.event.repository.name }}-${{ github.sha }}.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
